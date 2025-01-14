@@ -83,5 +83,96 @@ SELECT SUM(d1), SUM(d2) FROM decimals GROUP BY n;
 
 ```
 
-**float** is 4 bytes
-**double** is 8 bytes
+**FLOAT** is 4 bytes
+
+**DOUBLE** is 8 bytes
+
+When storing values that require absolute precision (currency, financial data, etc) you should use the DECIMAL data type.
+DECIMAL allows you to specify the exact number of digits including decimal points.
+This can be done by using the syntax ```DECIMAL(10,2)``` where the first number is the number of digits, and the second is the number of decimal places to reserve.
+The result of the above example will give us numbers that fill in `00000000.00` with the fixed percision of 2 decimal places, and 8 digits before the decimal.
+
+If using a data type for scientific calculations, where relative precision is more important than absolute precision, consider using FLOAT or DOUBLE.
+
+When working with decimal values in MySQL, it's important to choose the
+correct data type for your needs. If you require absolute precision in
+your values, DECIMAL is the best choice. If you don't require exact
+values, FLOAT or DOUBLE may be more appropriate, depending on the range
+and amount of percision you need. With FLOAT or DOUBLE, values might be
+slightly different than what is expected due to them not being exactly
+percise.
+
+### STRING
+All available string types:
+Talk about now
+- CHAR    (fixed character)
+- VARCHAR (variable character)
+
+Discuss later
+- TINYTEXT
+- TEXT
+- MEDIUMTEXT
+- LONGTEXT
+- BINARY
+- VARBINARY
+- TINYBLOB
+- BLOB
+- MEDIUMBLOB
+- LONGBLOB
+- ENUM
+- SET
+
+
+```sql
+CREATE TABLE strings (
+  fixed5 CHAR(5),
+  fixed32 CHAR(32),
+  fixed100 CHAR(100), -- "Robert                   ..." always takes 100 bytes
+  var100 VARCHAR(100) -- "Robert" takes 6 bytes + 1 byte to prefix how long it is
+)
+```
+
+`CHAR` column will awlays take up all space, while `VARCHAR` column will only take up the space it requires, up to the amount allocated.
+
+#### `CHARSET` and `COLATE`:
+
+`CHARSET` tells you what characters (A, a, B, b, ...) are allowed in the column.
+All values for `CHARSET` can be found with 
+```sql
+SELECT * FROM information_schema.CHARACTER_SETS ORDER BY CHARACTER_SET_NAME;
+```
+
+`COLATE` are rules that are used to determine how to compare two strings (A == a, a > A, ...).
+
+`ci` means **case incinsitive** (A === a)
+
+`ai` means **accent incinsitive** (e === é)
+
+### Binary Strings
+
+-- CHAR -- BINARY (fixed)
+
+-- VARCHAR -- VARBINARY (variable)
+
+These columns (BINARY and VARBINARY) only store bytes in their columns. No Character Set, no Colation.
+
+```sql
+CREATE TABLE bins (
+  bin BINARY(16),
+  var VARBINARY(100)
+);
+
+SELECT unhex(md5('hello')), md5('hello');
+
+INSERT INTO bins VALUES (UNHEX(MD5('hello')), UNHEX(MD5('hello')))
+
+SELECT * FROM bins;
+```
+
+> NOTE: When connecting to a mysql server, you can pass in the `--skip-binary-as-hex` flag so that you are able to view raw binary strings that may be stored.
+
+These can be useful when storing things like hashes that you use. This is because you don't need things like character sets and collation for hashes, and the data size is smaller than a `CHAR`. When wanting to select these, you can run a query like
+```sql
+-- bin_hash BINARY(16)
+SELECT * FROM bins WHERE bin_hash = UNHEX('<hash goes here>')
+```

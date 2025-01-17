@@ -176,3 +176,64 @@ These can be useful when storing things like hashes that you use. This is becaus
 -- bin_hash BINARY(16)
 SELECT * FROM bins WHERE bin_hash = UNHEX('<hash goes here>')
 ```
+
+`BINARY` and `VARBINARY` data types are similar to `CHAR` and `VARCHAR` without the constraints to following the rules set for character sets and collations. This is because these two binary data types only store bytes that represent the data being stored.
+
+### Long Strings
+
+Character data types (has character set and colation):
+- CHAR
+- VARCHAR
+- TEXT (TINYTEXT (255 characters), TEXT, MEDIUMTEXT, LONGTEXT (4GB))
+
+Binary data types (has no character set or colation):
+- BINARY
+- VARBINARY
+- BLOB (TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB (4GB))
+
+Do not select tables with blobs unless you want the blobs (same for medium and long texts)
+```sql
+SELECT * FROM table_with_blobs;
+```
+Instead, separate the data out and join in when you want to include that larger information, or reference exact columns. you are looking at.
+```sql
+SELECT * FROM blob_meta_data JOIN blobs ON blob_meta_data.blob_id = blobs.id;
+```
+
+You cannot index or sort the entire text columns due to size. You have to index a portion and search for the first 1000 or so characters.
+
+### Enum
+
+Looks like a string, but is stored as a number
+
+```sql
+CREATE TABLE orders (
+  id SERIAL,
+  size ENUM('x-small', 'small', 'medium', 'large', 'x-large')
+);
+
+INSERT INTO orders (size) VALUES ('small');
+
+SELECT size FROM orders;
+-- small
+
+SELECT size+0 FROM orders;
+-- 2
+```
+
+These numbers come from when we originally set up the column type:
+```sql
+-- String  | Position
+-- x-small | 1
+-- small   | 2
+-- medium  | 3
+-- large   | 4
+-- x-large | 5
+```
+
+Position 0 is reserved for INVALID data.
+
+Weird behaviors:
+- When using `ORDER BY`, it sorts by the underlying integer value.
+- You can't add another option without changing the schema of the table.
+

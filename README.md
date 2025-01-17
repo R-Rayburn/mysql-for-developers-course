@@ -237,3 +237,98 @@ Weird behaviors:
 - When using `ORDER BY`, it sorts by the underlying integer value.
 - You can't add another option without changing the schema of the table.
 
+### Dates
+
+There are different DATE data types in MySQL:
+
+| Type      | Bytes | Min                 | Max                 |
+|-----------|-------|---------------------|---------------------|
+| DATE      | 3     | 1000-01-01          | 9999-12-31          |
+| DATETIME  | 8     | 1000-01-01 00:00:00 | 9999-12-31 23:59:59 |
+| TIMESTAMP | 4     | 1970-01-01 00:00:00 | 2038-01-19 03:14:07 |
+| YEAR      | 1     | 1907                | 2155                |
+| TIME      | 3     | -838:59:59          | 838:59:59           |
+
+
+First question to ask: Do you need to store time?
+
+If not, just use the DATE data type.
+If storing time, you can use DATETIME and TIMESTAMP.
+If you need to use dates that pass 2038, then you should use the DATETIME data type.
+
+DATETIMES have no concept of a Timezone, but TIMESTAMPS are converted to UTC time.
+
+```sql
+CREATE TABLE timezone_test (
+  `timestamp` TIMESTAMP NULL,
+  `datetime` DATETIME NULL
+);
+
+INSERT INTO timezone_test VALUES ('2025-01-01 00:00:00', '2025-01-01 00:00:00');
+
+SELECT * FROM timezone_test;
+-- timestamp           | datetime
+-- 2025-01-01 00:00:00 | 2025-01-01 00:00:00
+
+SET SESSION time_zone '+05:00'; -- CST
+
+SELECT * FROM timezone_test;
+-- timestamp           | datetime
+-- 2025-01-01 05:00:00 | 2025-01-01 00:00:00 <- different timestamp value
+
+-- INSERT same data with new session timezone
+INSERT INTO timezone_test VALUES ('2025-01-01 00:00:00', '2025-01-01 00:00:00');
+SELECT * FROM timezone_test;
+-- timestamp           | datetime
+-- 2025-01-01 05:00:00 | 2025-01-01 00:00:00
+-- 2025-01-01 00:00:00 | 2025-01-01 00:00:00 <- New insert
+```
+
+This is the big difference between TIMESTAMP and DATETIME, where TIMESTAMP tries
+to assist by converting times in and out of your timezone.
+
+Usually this isn't a big deal, cause lots of servers are set to `00:00`
+
+Most web frameworks in their ORM layer will set session times zones to UTC.
+
+```sql
+CREATE TABLE users (
+  `id` SERIAL,
+  `crated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (id) VALUES (1);
+INSERT INTO users (id) VALUES (2);
+INSERT INTO users (id) VALUES (3);
+-- Done at different times will give different time values
+```
+
+### JSON
+```sql
+CREATE TABLE has_json (
+  `json` JSON,
+)
+
+INSERT INTO has_json VALUES ("{}");
+SELECT * FROM has_json;
+-- {}
+
+INSERT INTO has_json VALUES ("{key: value}"); -- Throws JSON validation error
+INSERT INTO has_json VALUES ("{\"key\": \"value\"}"); -- Passes JSON validation
+
+SELECT `json`->>"$.key" FROM has_json; -- ->> is the JSON UN-QUOATING OPPERATOR
+
+ALTER TABLE has_json ADD INDEX j (`json`); -- Error cause you cannot add index to JSON data
+-- Need to generate indexes on a specific json path, not the entire JSON blob
+```
+
+The JSON data type is a BINARY column under the hood, but is optimized for JSON.
+
+When should you use a JSON column?
+- Don't do it to avoid creating a real schema.
+- Storing payloads from 3rd parties or with schemas that are not going to be concrete
+- Something that is Schemaless (no schema defined)
+
+Make sure to only fetch for this data when you need it due to its size.
+Similar strategies can be used like with LONGSTRING and LONGBLOB

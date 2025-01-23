@@ -321,6 +321,10 @@ SELECT `json`->>"$.key" FROM has_json; -- ->> is the JSON UN-QUOATING OPPERATOR
 
 ALTER TABLE has_json ADD INDEX j (`json`); -- Error cause you cannot add index to JSON data
 -- Need to generate indexes on a specific json path, not the entire JSON blob
+
+ALTER TABLE has_json ADD INDEX my_index ((`json`->>"$.key"));
+-- Here we are adding an index on the key field withing the json.
+-- This allows faster lookups on queries that involve this JSON path.
 ```
 
 The JSON data type is a BINARY column under the hood, but is optimized for JSON.
@@ -328,7 +332,8 @@ The JSON data type is a BINARY column under the hood, but is optimized for JSON.
 When should you use a JSON column?
 - Don't do it to avoid creating a real schema.
 - Storing payloads from 3rd parties or with schemas that are not going to be concrete
-- Something that is Schemaless (no schema defined)
+- Something that is Schema-less (no schema defined, or very fluid schema)
 
 Make sure to only fetch for this data when you need it due to its size.
 Similar strategies can be used like with LONGSTRING and LONGBLOB
+

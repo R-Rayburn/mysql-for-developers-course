@@ -337,3 +337,47 @@ When should you use a JSON column?
 Make sure to only fetch for this data when you need it due to its size.
 Similar strategies can be used like with LONGSTRING and LONGBLOB
 
+### Unexpected types
+
+#### Boolean
+```sql
+CREATE TABLE fun (
+  is_having_fun BOOLEAN, -- keywork for `tinyint(1) DEFAULT NULL`
+);
+
+SHOW CREATE TABLE fun;
+
+-- CREATE TABLE `fun` (
+--   `is_having_fun` tinyint(1) DEFAULT NULL,
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
+
+Another way that is not recommended to create a boolean value is creatinga 0 length character column. Where null is false, and empty string is true.
+```sql
+is_having_fun char(0) null
+```
+
+This can be confusing to undertsand and shouldn't be used in practice for that reason.
+
+#### Zipcodes
+Zipcodes are typically 5 digits long, so you would assume integers would be enough.
+However, some zipcodes have leading 0s that would get stripped away when storing.
+You could now use a `char(5)`. Unless you want to store the extended values of the zipcode (`-####`).
+Then you would want to use a `char(10)` type.
+This would help too with the fact that zipcodes are not all digits. An example is a zipcode in NY that is `#####-SHOE`
+
+#### IP Address
+Usually in formats like `127.0.0.1`. With three deliminators and three characters long for each of the 4 spots, you may think a `char(15)` is all you can do.
+You can turn an IP Address into an integer though
+```sql
+SELECT INET_ATON('127.0.0.1');
+-- 2130706433
+```
+
+You can revert this with the NTOA function to get human readable version. You can store this as an integer now for more compactness and be able to perform easier scan, sort, filter actions on the queries you perform.
+
+For IPv6 addresses, you can use the `INET6_A2N` function, however these can't be stored in an integer column, but a `binary(16)` column would hold it.
+
+Knowing your data is super helpful in understanding the best data type you need to use in your schema for gains that you can get.
+
+### Generated Columns

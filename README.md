@@ -381,3 +381,101 @@ For IPv6 addresses, you can use the `INET6_A2N` function, however these can't be
 Knowing your data is super helpful in understanding the best data type you need to use in your schema for gains that you can get.
 
 ### Generated Columns
+
+Allows the DB to do the work for us when we need it to.
+
+```sql
+CREATE TABLE emails (
+  email VARCHAR(255), -- robert@example.com
+  domain VARCHAR(155) -- want to fill this with example.com
+);
+```
+
+Seeding the data can be done wiht a hook, presave, etc. This is brittle with direct edits in the DB. Generated columns can help here.
+
+```sql
+SELECT SUBSTRING_INDEX('robert@example.com', '@', -1); -- extracts domain
+
+
+-- use the above as the domain columns "formula"
+CREATE TABLE emails (
+  email VARCHAR(255), -- robert@example.com
+  domain VARCHAR(155) AS (SELECT SUBSTRING_INDEX(email, '@', -1))
+);
+
+INSERT INTO emails (email) VALUES ('robert@example.com');
+
+SELECT * FROM emails;
+-- email              | domain
+-- robert@example.com | example.com
+```
+
+You are not able to mess this up on DB inserts, due to erroring on adding in values on a generated column
+```sql
+INSERT INTO email (email, domain) VALUES ('robert@example.com', 'asdfasdf');
+-- Error on value of domain not being allowed for generated column
+```
+
+
+You can use different functions, like hashing a column (`MD5(email)`), combining columns (`CONCAT(email, 'asdf')`), doing math (`total DOUBLE AS (price * 1.0825)`).
+
+Volitile (functions that will change over time), cannot be used in a generated column. The functions have to be deterministic. No `now()` or random values can be used.
+
+These columns can be virtual or stored columns. Virtual are generated on queries (calculated at runtime), stored are stored/written on the disk.
+Designated with `STORED` and `VIRTUAL` keywords.
+
+Virtual is calculated every time it is used (could cause overhead if complicated to calculate)
+Stored is calcualted on changes and not on reads.
+
+> NOTE: VIRTUAL is default
+
+Another good use case is pulling out keys from a json object to store as a top level column.
+
+```sql
+CREATE TABLE emails (
+  `json` JSON,
+  `email` VARCHAR(255) AS (`json`->>'$.email')
+);
+```
+
+This is a good case for STORED generated column so that you are not hitting the JSON at each reference. It won't have to reference the full JSON.
+VIRTUAL columns would have to calculate off the JSON every time. This applies to BLOBS or TEXT columns that are large as well.
+
+
+### Schema Migrations
+
+Simply, a folder full of sql statements.
+These are used to help keep track of schema changes that need to be made as your DB needs change.
+With VC, developers are able to have a coded history as well to changes that are made.
+Typically, there is an "up" and "down" step to each migration, where the "up" has new changes we are wanting to introduce, while "down" reverts those changes.
+
+Some best practices can be (but can be opinionated):
+- always have explicit sql statements in order to show the database state alteration.
+- avoid using down migrations.
+- use version control to keep track of changes
+- consider when to run migration (maintenance window, tool to help keep db connection functional during migration, etc.)
+
+
+
+## Indexes
+### Intro
+
+1. Indexes are entirely different separate data structure.
+  - Note, a table is an index
+Indexes create a second data structure. It isn't an attribute on the table.
+
+2. It maintains a copy of (part of) of your data
+
+3. It has a pointer back to the row.
+  The index data structure points to the row in the table data structure.
+
+#### Creating indexes
+Create as many indexes as you NEED. They are the best tool for creating performant queries.
+
+Create as few as you can get away with. This is because there is a copy of the data that is maintained, and when changes are made on original data, the index could also be updated.
+
+You can look at your DATA to get your Schema (Data -> Schema)
+You cannot tell from your data what a good index would be. You have to look at your queries instead. (Query -> Index) Indexes are drivien by queries/access patterns of your application.
+
+### B+ Trees
+

@@ -479,3 +479,38 @@ You cannot tell from your data what a good index would be. You have to look at y
 
 ### B+ Trees
 
+The underlying data structure for mose indexes in mysql.
+
+Say you have this table:
+```sql
+SELECT * FROM people;
+
+-- id | name    | email               |
+-- 1  | Philip  | Philip@example.com  |
+-- 2  | Josh    | Josh@example.com    |
+-- 3  | Ben     | Ben@example.com     |
+-- 4  | Ashton  | Ashton@example.com  |
+-- 5  | Maddie  | Maddie@example.com  |
+-- 6  | Abigail | Abigail@example.com |
+-- 7  | Jakob   | Jakob@example.com   |
+-- 8  | Luke    | Luke@example.com    |
+-- 9  | David   | David@example.com   |
+```
+
+And you want to query on the name `Jakob`. What happens wihtout an index?
+
+From MySQL
+> Without an index, MySQL must begin with the first row and then read through the entire table to find the relevant row. The larger the table, the more this will cost. If the column in question has an index on it, MySQL can quickly determine the position to seek to in the middle of the data file without having to look at all the data.
+
+Visual representation of a B tree for above data:
+```
+                                Josh
+                          /               \
+                     Ben                            Maddie
+              /             \                   /            \
+     Ashton                 Jakob             Luke            Philip
+    /      \             /        \           /   \          /      \
+Abigail -> Ashton -> Ben David -> Jakob -> Josh -> Luke -> Maddie -> Philip
+```
+
+This uses a Binary search to find the value that is == to what you are searching for. Less then goes left, greater than or equal goes right. You travel to the leaves of the tree, starting at the root node. This changes from O(n) to O(log(n)).

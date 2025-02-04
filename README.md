@@ -513,4 +513,67 @@ Visual representation of a B tree for above data:
 Abigail -> Ashton -> Ben David -> Jakob -> Josh -> Luke -> Maddie -> Philip
 ```
 
-This uses a Binary search to find the value that is == to what you are searching for. Less then goes left, greater than or equal goes right. You travel to the leaves of the tree, starting at the root node. This changes from O(n) to O(log(n)).
+This uses a Binary search to find the value that is == to what you are searching for. Less then goes left, greater than or equal goes right. 
+You travel to the leaves of the tree, starting at the root node. This changes from O(n) to O(log(n)) for searching actions.
+
+### Primary keys
+Primary keys can be declared multiple ways
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+
+  -- defining at table level is useful when decaring multiple primary keys in a table
+  -- PRIMARY KEY (a, b, ...)
+);
+
+SHOW CREATE TABLE users;
+-- CREATE TABLE `users` (
+--   `id` biging NOT NULL,
+--   PRIMARY KEY (`id`) 
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+```
+
+Primary keys have indexes created for them automatically. These are unique indexes that are created.
+```SQL
+SHOW INDEXES FROM users;
+-- Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null  | Index_type | Comment | Index_comment | Visible | Expression
+-- users |          0 | PRIMARY  |            1 | id          | A         |           0 |     NULL | NULL   | EMPTY | BTREE      | EMPTY   | EMPTY         | YES     | NULL
+```
+
+Primary Keys will be declared not nullable and have a unique index created on the column.
+
+If you are not careful, you could create wasted indexes on table by creating an index on the primary key.
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  name VARCHAR(255),
+
+  INDEX(id)
+);
+
+SHOW CREATE TABLE users;
+/* 
+ * CREATE TABLE `users` (   
+ *   `id` biging NOT NULL,
+ *   `name` VARCHAR(255) DEFAULT NULL,
+ *   PRIMARY KEY (id), -- Two different keys set
+ *   KEY `id` (`id`)
+ * ); */
+
+-- Duplicated indexwa now exist.
+SHOW INDEXES FROM users;
+-- Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null  | Index_type | Comment | Index_comment | Visible | Expression
+-- users |          0 | PRIMARY  |            1 | id          | A         |           0 |     NULL | NULL   | EMPTY | BTREE      | EMPTY   | EMPTY         | YES     | NULL
+-- users |          1 | id       |            1 | id          | A         |           0 |     NULL | NULL   | EMPTY | BTREE      | EMPTY   | EMPTY         | YES     | NULL
+```
+
+For our integer primary keys, we should make sure we are using the unsigned instance of the numeric type, so we are not wasting any space.
+The following example will ensure our primary key will auto increment and will have more space by not needing to utilize the negative values.
+```sql
+CREATE TABLE users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255),
+);
+```
+
+There can be strong cases as to why primary keys should be integers.

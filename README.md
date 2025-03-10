@@ -576,4 +576,19 @@ CREATE TABLE users (
 );
 ```
 
-There can be strong cases as to why primary keys should be integers.
+Leaf nodes for a Primary Key hold the data of the table. It holds the whole row data. This means that a primary key lookup is very fast cause once it gets to the correct leaf, all the data in the row is accessible there. The table is an index (clusterd index).
+
+If you don't create a Primary Key when you create your table, mysql will create one for you and handle it in secret. This is because they are very important.
+
+### Secondary keys
+A secondary key/index that is not the primary key. You can have as many secondary keys as you want.
+
+The primary and secondary keys are related to each other.
+
+How does the secondary index get the rest of the data when querying for the information?
+
+The secondary index has a pointer to the primary index, where it does a second lookup to get to the primary key leaf node with all the data.
+
+When we look up a value with a secondary index, it does two lookups. One to get the primary key, the other to get the rest of the data.
+
+Every leaf node in the secondary key has the primary key indexed.

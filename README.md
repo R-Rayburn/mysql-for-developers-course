@@ -592,3 +592,66 @@ The secondary index has a pointer to the primary index, where it does a second l
 When we look up a value with a secondary index, it does two lookups. One to get the primary key, the other to get the rest of the data.
 
 Every leaf node in the secondary key has the primary key indexed.
+
+### Primary key data types
+
+What data type should you pick?
+
+There can be a risk of using a very compact primary key is running out of room for inserting new data.
+
+You can use unsigned big integers to get a functionally infinite amount of room.
+
+UUIDs and GUIDs are also options.
+
+Primary keys are copied to every secondary index, so that it knows where to go to get all the data. Using strings can make your secondary indexes bigger. And inserts can be hard, cause using strings could cause an insert in the middle of the tree, then the entire tree needs to be re-balanced at that point, which can be costly.
+
+You could use a sorted uuid and guid (possibly ulid) to help reduce this issue.
+
+The argument
+> We shouldn't use ids cause we could have an auto-increment attack where someone just changes the number to see what they can get data on. We should always use UUID and GUID.
+
+This is not a good reason. You can use a schema called nano-id that is used in the url and api. This helps with obsfucation. This is an additional column with an index on it.
+
+### Where to add indexes
+The query should drive the index.
+
+We start with our access patterns to see where our indexes should be. Sometimes we need to re-write queries, or create new indexes based on how the way we access our data changes.
+
+We should NOT use an index of every column, cause those are duplicate data in different data structures.
+
+Also, we shouldn't just index things that are all in the WHERE query. But that isn't all we need to consider.
+
+Sorting, grouping, joining all play a part as well as the where clause.
+
+```sql
+select * from people;
+
+show create table people;
+
+-- CREATE TABLE `people` (
+--   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+--   `first_name` VARCHAR(50),
+--   `last_name` VARCHAR(50),
+--   `state` CHAR(2),
+--   `email` VARCHAR(255),
+--   `birthday` date,
+--   PRIMARY KEY (`id`)
+-- );
+
+alter table `people` add index(`birthday`);
+-- Where does this query help us?
+select * from people where birthday = '1989-02-14';
+select * from people order by birthday limit 10;
+select count(*) from people group by birthday;
+
+explain select * from people where birthday='1989-02-14';
+-- Will show possible keys and the key that will be used
+-- if no `key` is shown in the explain, then it is not utilizing an index.
+
+```
+
+#### When to add indexes:
+- Do not assume that anything that shows up in the where clause of a query should have an index. Consider all queries being run and their respective access patterns.
+- Do not create an index on every column. This will slow down inserts by functionally duplicating your table. It also won't help reads as much as you'd hope.
+- Do consider the entire query when deciding which columns to index. This includes sorting, grouping, and joining.
+- Do not worry about trying to create the perfect index for every query. It may not always be possible, and sometimes you will have to rework the queries to take advantage of existing indexes.

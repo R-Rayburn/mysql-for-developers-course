@@ -655,3 +655,27 @@ explain select * from people where birthday='1989-02-14';
 - Do not create an index on every column. This will slow down inserts by functionally duplicating your table. It also won't help reads as much as you'd hope.
 - Do consider the entire query when deciding which columns to index. This includes sorting, grouping, and joining.
 - Do not worry about trying to create the perfect index for every query. It may not always be possible, and sometimes you will have to rework the queries to take advantage of existing indexes.
+
+#### What queries do indexes help with?
+Given the following index on the birthday column `alter table people add index birthday_index (birthday);`:
+- Checking equality `select * from people where birthday = '1989-02-14';`
+- Checking unbound and bound ranges `select * from people where birthday >= '2006-01-01';` and `select * from people where birthday between '2006-01-01' and '2006-12-31';`
+- Sorting `select * from people order by birthday limit 10;`
+- Grouping `select birthday, count(*) from people group by birthday;`
+
+### Index selectivity
+#### Terms
+**Cardinality** refers to the number of distinct values in a particular column that an index covers. When you use the SHOW INDEXES command in MySQL, the cardinality column in the output shows you the approximate total number of unique values in a given index column.
+
+**Selectivity**, on the other hand, refers to how unique the values in a column are. It is a measure of how selective an index can be in narrowing down results when queried. The higher the selectivity of an index, the better it is for optimizing query performance.
+
+
+Thoughts when setting an index
+- Which columns are the most selective
+  - Think in comparison to primary key
+- Will I be using this column alot
+- Is there enough distinction in the column
+  - Ex. `types` on a `user` table where majority of users are type `user` and not type `admin` might not make sense for an index.
+  -  This is not highly selective for `user` values, but could be useful when searching `admin` values.
+
+We can always check the selectivity of the index by doing the following query: `select count(distinct birthday) / count(*) from people` gives us a ratio for seeing which column has a higher selectivity.
